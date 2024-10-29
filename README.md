@@ -3,6 +3,8 @@
 
 Smart Homestay is a backend service for managing homestay reservations, transactions, and customer accounts. The service provides endpoints for customer and crew registration, login, reservation management, and transaction processing. It also integrates with Kafka to send notifications upon successful reservation creation.
 
+![ERD Smart Homestay](./ERD%20Smart%20Homestay.png)
+
 ## Table of Contents
 - [Installation](#installation)
 - [Endpoints](#endpoints)
