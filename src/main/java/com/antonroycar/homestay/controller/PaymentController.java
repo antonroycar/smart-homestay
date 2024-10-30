@@ -36,6 +36,8 @@ public class PaymentController {
 
     @GetMapping("/completed")
     public List<TransactionResponse> getCompletedPayments(HttpServletRequest request) {
+
+
         // Ambil token dari header Authorization
         String token = request.getHeader("Authorization");
         if (token == null || !token.startsWith("Bearer ")) {
@@ -62,7 +64,7 @@ public class PaymentController {
         }
 
         // Kembalikan daftar transaksi yang sudah dibayar (status COMPLETED)
-        return paymentService.getCompletedPayments();
+        return paymentService.getCompletedPayments(request);
     }
 }
 

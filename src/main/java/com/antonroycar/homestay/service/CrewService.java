@@ -59,6 +59,6 @@ public class CrewService {
     public UserDetails loadUserByUsername(String username) {
         Account account = accountRepository.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
-        return new User(account.getUsername(), account.getPassword(), List.of(new SimpleGrantedAuthority("ROLE_CUSTOMER")));
+        return new User(account.getUsername(), account.getPassword(), List.of(new SimpleGrantedAuthority("ROLE_CREW")));
     }
 }

@@ -9,6 +9,7 @@ import com.antonroycar.homestay.service.ReservationService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -29,27 +30,9 @@ public class ReservationController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public ReservationResponse createReservation(@RequestBody ReservationRequest reservationRequest, HttpServletRequest request) {
-        // Ambil token dari header Authorization
-        String token = request.getHeader("Authorization");
-
-        // Periksa apakah token ada
-        if (token == null || !token.startsWith("Bearer ")) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authorization token is required");
-        }
-
-
-        // Hapus "Bearer " dari awal token
-        String actualToken = token.substring(7);
-        String username = jwtUtil.extractUsername(actualToken);
-
-        // Validasi token JWT
-        if (!jwtUtil.validateToken(actualToken, username)) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid token");
-        }
-
-        // Panggil service untuk membuat reservasi
-        return reservationService.reservation(reservationRequest, actualToken);
+    public ResponseEntity<ReservationResponse> createReservation(@RequestBody ReservationRequest reservationRequest, HttpServletRequest request) {
+        ReservationResponse response = reservationService.reservation(reservationRequest, request);
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/all")
@@ -80,6 +63,6 @@ public class ReservationController {
         }
 
         // Kembalikan semua reservasi
-        return reservationService.getAllReservations();
+        return reservationService.getAllReservations(request);
     }
 }

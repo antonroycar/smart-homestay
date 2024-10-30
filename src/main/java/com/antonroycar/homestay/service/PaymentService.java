@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -30,6 +31,9 @@ public class PaymentService {
 
     @Autowired
     private JwtUtil jwtUtil;
+
+    @Autowired
+    private AuthService authService;
 
     @Transactional
     public TransactionResponse processPayment(PaymentRequest paymentRequest, HttpServletRequest request) {
@@ -49,6 +53,11 @@ public class PaymentService {
         // Cari account berdasarkan username
         Account account = accountRepository.findByUsername(username)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Customer must be logged in to make a payment"));
+
+        // Check if the account token matches the provided token and if the token is expired
+        if (!actualToken.equals(account.getToken()) || account.getTokenExpiredAt() < System.currentTimeMillis()) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Token has expired, please log in again");
+        }
 
         // Cari transaksi terkait
         Transaction transaction = transactionRepository.findByPaymentCode(paymentRequest.getPaymentCode())
@@ -91,7 +100,31 @@ public class PaymentService {
                 .build();
     }
 
-    public List<TransactionResponse> getCompletedPayments() {
+    public List<TransactionResponse> getCompletedPayments(HttpServletRequest request) {
+
+        // Retrieve token from Authorization header
+        String token = request.getHeader("Authorization");
+        if (token == null || !token.startsWith("Bearer ")) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authorization token is required");
+        }
+
+        String actualToken = token.substring(7); // Remove "Bearer " prefix
+
+        // Validate the token
+        authService.validateToken(actualToken);
+
+        // Extract username from token
+        String username = jwtUtil.extractUsername(actualToken);
+
+        // Find the account by username
+        Account account = accountRepository.findByUsername(username)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found or logged out"));
+
+        // Validate that the token in the account matches and hasn't expired
+        if (account.getToken() == null || !account.getToken().equals(actualToken) || account.getTokenExpiredAt() < System.currentTimeMillis()) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Session expired or user logged out, please log in again");
+        }
+
         return transactionRepository.findByStatus("COMPLETED").stream()
                 .map(transaction -> {
                     // Bangun kembali TransactionResponse dengan reservationId yang tersedia melalui metode baru

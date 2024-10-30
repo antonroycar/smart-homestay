@@ -59,6 +59,11 @@ public class TransactionService {
         Account account = accountRepository.findByUsername(username)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Customer must be logged in to make a transaction"));
 
+        // Check if the account token matches the provided token and if the token is expired
+        if (!actualToken.equals(account.getToken()) || account.getTokenExpiredAt() < System.currentTimeMillis()) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Token has expired, please log in again");
+        }
+
         // Cari reservasi terkait
         Reservation reservation = reservationRepository.findById(transactionRequest.getReservationId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Reservation not found"));

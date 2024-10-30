@@ -13,6 +13,7 @@ import com.antonroycar.homestay.repository.AccountRepository;
 import com.antonroycar.homestay.repository.ReservationRepository;
 import com.antonroycar.homestay.security.JwtUtil;
 import com.antonroycar.homestay.service.validation.ValidationService;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -43,19 +44,25 @@ public class ReservationService {
 
     private static final String TOPIC = "reservation-created";
 
+    @Autowired
+    private AuthService authService;
+
     @Transactional
-    public ReservationResponse reservation(ReservationRequest reservationRequest, String token) {
+    public ReservationResponse reservation(ReservationRequest reservationRequest, HttpServletRequest request) {
         validationService.validate(reservationRequest);
 
-        String username = jwtUtil.extractUsername(token);
-        // Validasi token JWT dan ambil username
-        if (!jwtUtil.validateToken(token, username)) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid token");
-        }
+        String token = request.getHeader("Authorization").substring(7);
+        authService.validateToken(token);
 
-        // Cari account berdasarkan username
+        String username = jwtUtil.extractUsername(token);
         Account account = accountRepository.findByUsername(username)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid account"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found or logged out"));
+
+
+        // Validate the token and check if it matches the one in the account entity and is not expired
+        if (account.getToken() == null || !account.getToken().equals(token) || account.getTokenExpiredAt() < System.currentTimeMillis()) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Session expired or user logged out, please log in again");
+        }
 
         // Hitung jumlah total tamu
         int totalGuests = reservationRequest.getAdults() + reservationRequest.getChildren();
@@ -138,7 +145,31 @@ public class ReservationService {
     }
 
     @Transactional
-    public List<ReservationResponse> getAllReservations() {
+    public List<ReservationResponse> getAllReservations(HttpServletRequest request) {
+
+        // Retrieve token from Authorization header
+        String token = request.getHeader("Authorization");
+        if (token == null || !token.startsWith("Bearer ")) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authorization token is required");
+        }
+
+        String actualToken = token.substring(7); // Remove "Bearer " prefix
+
+        // Validate the token
+        authService.validateToken(actualToken);
+
+        // Extract username from token
+        String username = jwtUtil.extractUsername(actualToken);
+
+        // Find the account by username
+        Account account = accountRepository.findByUsername(username)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found or logged out"));
+
+        // Validate that the token in the account matches and hasn't expired
+        if (account.getToken() == null || !account.getToken().equals(actualToken) || account.getTokenExpiredAt() < System.currentTimeMillis()) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Session expired or user logged out, please log in again");
+        }
+
         return reservationRepository.findAll().stream()
                 .map(reservation -> {
                     int totalGuests = reservation.getGuestDetails().getQuantity();

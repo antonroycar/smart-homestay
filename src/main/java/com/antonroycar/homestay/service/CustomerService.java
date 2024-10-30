@@ -34,6 +34,7 @@ public class CustomerService {
 
     @Transactional
     public String registerCustomer(RegisterRequestCustomer register) {
+
         // Validasi input
         validationService.validate(register);
 

@@ -27,11 +27,9 @@ public class RegisterController {
     public ResponseEntity<String> register(@RequestBody RegisterRequest registerRequest) {
         String response;
 
-        if (registerRequest instanceof RegisterRequestCustomer) {
-            RegisterRequestCustomer customerRequest = (RegisterRequestCustomer) registerRequest;
+        if (registerRequest instanceof RegisterRequestCustomer customerRequest) {
             response = customerService.registerCustomer(customerRequest);
-        } else if (registerRequest instanceof RegisterRequestCrew) {
-            RegisterRequestCrew crewRequest = (RegisterRequestCrew) registerRequest;
+        } else if (registerRequest instanceof RegisterRequestCrew crewRequest) {
             response = crewService.registerCrew(crewRequest);
         } else {
             return new ResponseEntity<>("Invalid request", HttpStatus.BAD_REQUEST);
