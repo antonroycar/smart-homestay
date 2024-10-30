@@ -41,6 +41,7 @@ public class TransactionService {
 
     @Transactional
     public TransactionResponse createTransaction(TransactionRequest transactionRequest, HttpServletRequest request) {
+
         // Ambil token dari header Authorization
         String token = request.getHeader("Authorization");
         if (token == null || !token.startsWith("Bearer ")) {
