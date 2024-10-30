@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 import java.util.Date;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 public class TransactionService {
@@ -94,6 +95,12 @@ public class TransactionService {
         // Calculate final total amount (roomCost + additionalFacilityCost)
         double totalAmount = roomCost + additionalFacilityCost;
 
+        // Generate a unique payment code
+        String paymentCode;
+        do {
+            paymentCode = UUID.randomUUID().toString();
+        } while (transactionRepository.findByPaymentCode(paymentCode).isPresent());  // Check for uniqueness
+
         // Buat objek Transaction
         Transaction transaction = Transaction.builder()
                 .reservation(reservation)
@@ -101,6 +108,7 @@ public class TransactionService {
                 .totalAmount(totalAmount)  // Hasil dari perhitungan otomatis
                 .status("PENDING")  // Status awal transaksi
                 .transactionDate(new Date())
+                .paymentCode(paymentCode)
                 .build();
 
         // Simpan transaksi ke database
@@ -123,6 +131,7 @@ public class TransactionService {
                 .totalAmount(totalAmount)
                 .status(transaction.getStatus())
                 .transactionDate(transaction.getTransactionDate())
+                .paymentCode(paymentCode)
                 .build();
     }
 }

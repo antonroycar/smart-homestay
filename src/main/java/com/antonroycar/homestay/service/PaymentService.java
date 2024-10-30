@@ -51,7 +51,7 @@ public class PaymentService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Customer must be logged in to make a payment"));
 
         // Cari transaksi terkait
-        Transaction transaction = transactionRepository.findById(paymentRequest.getTransactionId())
+        Transaction transaction = transactionRepository.findByPaymentCode(paymentRequest.getPaymentCode())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Transaction not found"));
 
         // Validasi: Pastikan transaksi milik customer yang sedang login
@@ -87,6 +87,7 @@ public class PaymentService {
                 .totalAmount(transaction.getTotalAmount())
                 .status(transaction.getStatus())
                 .transactionDate(transaction.getTransactionDate())
+                .paymentCode(transaction.getPaymentCode())
                 .build();
     }
 

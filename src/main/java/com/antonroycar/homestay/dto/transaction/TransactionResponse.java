@@ -19,4 +19,6 @@ public class TransactionResponse {
     private String status;
 
     private Date transactionDate;
+
+    private String paymentCode;
 }
