@@ -9,6 +9,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.antonroycar.homestay.security.JwtUtil;
+import org.springframework.beans.factory.annotation.Autowired;
+
 @RestController
 @RequestMapping("/auth")
 public class LogoutController {
@@ -17,26 +20,34 @@ public class LogoutController {
     private AuthService authService;
 
     @Autowired
+    private JwtUtil jwtUtil;
+
+    @Autowired
     private AccountRepository accountRepository;
 
     @DeleteMapping("/logout")
     public ResponseEntity<String> logout(@RequestHeader("Authorization") String token) {
-        // Pastikan token memiliki format yang benar
         if (token == null || !token.startsWith("Bearer ")) {
             return new ResponseEntity<>("Invalid token format", HttpStatus.BAD_REQUEST);
         }
 
-        // Ambil token tanpa "Bearer "
         String actualToken = token.substring(7);
 
-        // Cari account berdasarkan token
-        Account account = accountRepository.findByToken(actualToken)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Invalid token"));
+        String username = jwtUtil.extractUsername(actualToken);
 
-        // Panggil service untuk menghapus token dan logout user
+        // Validasi token JWT
+        if (!jwtUtil.validateToken(actualToken, username)) {
+            return new ResponseEntity<>("Invalid token", HttpStatus.UNAUTHORIZED);
+        }
+
+        Account account = accountRepository.findByUsername(username)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Account not found"));
+
+        // Panggil AuthService untuk logout (Anda dapat menambahkan logika tambahan di sini jika perlu)
         authService.logout(account);
 
         return new ResponseEntity<>("Logout successfully", HttpStatus.OK);
     }
 }
+
 

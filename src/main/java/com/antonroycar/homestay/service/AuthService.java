@@ -5,6 +5,7 @@ import com.antonroycar.homestay.dto.login.LoginRequest;
 import com.antonroycar.homestay.entity.Account;
 import com.antonroycar.homestay.repository.AccountRepository;
 import com.antonroycar.homestay.security.BCrypt;
+import com.antonroycar.homestay.security.JwtUtil;
 import com.antonroycar.homestay.service.validation.ValidationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -23,6 +24,9 @@ public class AuthService {
     @Autowired
     private ValidationService validationService;
 
+    @Autowired
+    private JwtUtil jwtUtil;
+
     @Transactional
     public TokenResponse login(LoginRequest login) {
         validationService.validate(login);
@@ -36,24 +40,22 @@ public class AuthService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Username or password is incorrect");
         }
 
-        // Generate token
-        account.setToken(UUID.randomUUID().toString());
-        account.setTokenExpiredAt(System.currentTimeMillis() + (1000 * 60 * 24 * 30));  // Token expires in 30 days
-        accountRepository.save(account);
+        // Generate JWT token with role
+        String jwtToken = jwtUtil.generateToken(account.getUsername(), account.getRole().name());
 
         // Return TokenResponse
         return TokenResponse.builder()
-                .token(account.getToken())
-                .expiredAt(account.getTokenExpiredAt())
+                .token(jwtToken)
+                .expiredAt(jwtUtil.extractExpiration(jwtToken).getTime())
                 .build();
     }
 
     @Transactional
     public void logout(Account account) {
-        account.setToken(null);
-        account.setTokenExpiredAt(null);
-
-        accountRepository.save(account);
+        // Catat aktivitas logout di log atau database jika diperlukan
+        System.out.println("User " + account.getUsername() + " has logged out.");
+        // Tidak ada perubahan pada token atau penyimpanan di server
     }
+
 }
 

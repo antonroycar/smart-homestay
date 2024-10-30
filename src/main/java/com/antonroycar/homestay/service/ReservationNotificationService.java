@@ -60,7 +60,7 @@ public class ReservationNotificationService {
         String emailSubject = "Your Homestay Reservation Confirmation";
 
         // Send email
-        emailService.sendEmail("email@gmail.com", emailSubject, emailContent.toString());
+        emailService.sendEmail("rrqneutron@gmail.com", emailSubject, emailContent.toString());
     }
 }
 

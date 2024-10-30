@@ -20,8 +20,7 @@ public class RegisterRequestCustomer extends RegisterRequest {
     @Size(max = 100)
     private String name;
 
-    @NotBlank
-    @Size(max = 3)
+    @NotNull
     private int age;
 
     @NotNull

@@ -7,6 +7,7 @@ import com.antonroycar.homestay.entity.Account;
 import com.antonroycar.homestay.entity.Transaction;
 import com.antonroycar.homestay.repository.AccountRepository;
 import com.antonroycar.homestay.repository.TransactionRepository;
+import com.antonroycar.homestay.security.JwtUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -27,6 +28,9 @@ public class PaymentService {
     @Autowired
     private AccountRepository accountRepository;
 
+    @Autowired
+    private JwtUtil jwtUtil;
+
     @Transactional
     public TransactionResponse processPayment(PaymentRequest paymentRequest, HttpServletRequest request) {
         // Ambil token dari header Authorization
@@ -34,10 +38,16 @@ public class PaymentService {
         if (token == null || !token.startsWith("Bearer ")) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authorization token is required");
         }
-        token = token.substring(7);
+        String actualToken = token.substring(7);
 
-        // Cari account berdasarkan token
-        Account account = accountRepository.findByToken(token)
+        String username = jwtUtil.extractUsername(actualToken);
+        // Validasi token JWT dan ambil username
+        if (!jwtUtil.validateToken(actualToken, username)) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid token");
+        }
+
+        // Cari account berdasarkan username
+        Account account = accountRepository.findByUsername(username)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Customer must be logged in to make a payment"));
 
         // Cari transaksi terkait
@@ -53,9 +63,6 @@ public class PaymentService {
         if (!transaction.getStatus().equals("PENDING")) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Transaction is not pending, cannot proceed with payment");
         }
-
-        // Ambil jumlah total yang harus dibayar dari transaksi
-        Double totalAmount = transaction.getTotalAmount();
 
         // Set transaction status to COMPLETED setelah pembayaran berhasil
         transaction.setStatus("COMPLETED");
@@ -87,7 +94,7 @@ public class PaymentService {
         return transactionRepository.findByStatus("COMPLETED").stream()
                 .map(transaction -> {
                     // Bangun kembali TransactionResponse dengan reservationId yang tersedia melalui metode baru
-                    TransactionResponse response = TransactionResponse.builder()
+                    return TransactionResponse.builder()
                             .transactionId(transaction.getTransactionId())
                             .reservation(ReservationResponse.builder()
                                     .reservationId(transaction.getReservation().getReservationId())
@@ -101,7 +108,6 @@ public class PaymentService {
                             .status(transaction.getStatus())
                             .transactionDate(transaction.getTransactionDate())
                             .build();
-                    return response;
                 })
                 .collect(Collectors.toList());
     }

@@ -10,6 +10,7 @@ import com.antonroycar.homestay.entity.Transaction;
 import com.antonroycar.homestay.repository.AccountRepository;
 import com.antonroycar.homestay.repository.ReservationRepository;
 import com.antonroycar.homestay.repository.TransactionRepository;
+import com.antonroycar.homestay.security.JwtUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -34,6 +35,9 @@ public class TransactionService {
     @Autowired
     private ReservationService reservationService;
 
+    @Autowired
+    private JwtUtil jwtUtil;
+
     @Transactional
     public TransactionResponse createTransaction(TransactionRequest transactionRequest, HttpServletRequest request) {
         // Ambil token dari header Authorization
@@ -41,17 +45,23 @@ public class TransactionService {
         if (token == null || !token.startsWith("Bearer ")) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authorization token is required");
         }
-        token = token.substring(7);  // Hapus "Bearer " dari awal token
+        String actualToken = token.substring(7);  // Hapus "Bearer " dari awal token
 
-        // Cari account berdasarkan token
-        Account account = accountRepository.findByToken(token)
+        String username = jwtUtil.extractUsername(actualToken);
+        // Validasi token JWT dan ambil username
+        if (!jwtUtil.validateToken(actualToken, username)) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid token");
+        }
+
+        // Cari account berdasarkan username
+        Account account = accountRepository.findByUsername(username)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Customer must be logged in to make a transaction"));
 
         // Cari reservasi terkait
         Reservation reservation = reservationRepository.findById(transactionRequest.getReservationId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Reservation not found"));
 
-        // **Validasi: Pastikan tidak ada transaksi lain dengan reservationId yang sama**
+        // Validasi: Pastikan tidak ada transaksi lain dengan reservationId yang sama
         if (transactionRepository.existsByReservation(reservation)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Transaction for this reservation already exists");
         }

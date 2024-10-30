@@ -11,6 +11,7 @@ import com.antonroycar.homestay.entity.AdditionalFacility;
 import com.antonroycar.homestay.entity.Reservation;
 import com.antonroycar.homestay.repository.AccountRepository;
 import com.antonroycar.homestay.repository.ReservationRepository;
+import com.antonroycar.homestay.security.JwtUtil;
 import com.antonroycar.homestay.service.validation.ValidationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -37,18 +38,24 @@ public class ReservationService {
     @Autowired
     private KafkaTemplate<String, ReservationResponse> kafkaTemplate;
 
+    @Autowired
+    private JwtUtil jwtUtil;
+
     private static final String TOPIC = "reservation-created";
 
     @Transactional
     public ReservationResponse reservation(ReservationRequest reservationRequest, String token) {
         validationService.validate(reservationRequest);
 
-        Account account = accountRepository.findByToken(token)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid token"));
-
-        if (account.getTokenExpiredAt() < System.currentTimeMillis()) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Session expired, please log in again");
+        String username = jwtUtil.extractUsername(token);
+        // Validasi token JWT dan ambil username
+        if (!jwtUtil.validateToken(token, username)) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid token");
         }
+
+        // Cari account berdasarkan username
+        Account account = accountRepository.findByUsername(username)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid account"));
 
         // Hitung jumlah total tamu
         int totalGuests = reservationRequest.getAdults() + reservationRequest.getChildren();
@@ -101,7 +108,6 @@ public class ReservationService {
         // Now call calculateFacilityDetails with List<FacilityDetail>
         List<FacilityDetail> facilityDetails = calculateFacilityDetails(facilityDetailsInput, totalGuests, totalBeds);
 
-
         // Buat objek Reservation berdasarkan ReservationRequest
         Reservation reservation = Reservation.builder()
                 .accountId(account.getAccountId())
@@ -129,8 +135,6 @@ public class ReservationService {
 
         // Buat dan kembalikan objek ReservationResponse
         return reservationResponse;
-
-
     }
 
     @Transactional
@@ -182,5 +186,4 @@ public class ReservationService {
                     .build();
         }).collect(Collectors.toList());
     }
-
 }
