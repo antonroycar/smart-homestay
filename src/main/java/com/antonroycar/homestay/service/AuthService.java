@@ -7,7 +7,6 @@ import com.antonroycar.homestay.repository.AccountRepository;
 import com.antonroycar.homestay.security.BCrypt;
 import com.antonroycar.homestay.security.JwtUtil;
 import com.antonroycar.homestay.service.validation.ValidationService;
-import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -28,6 +27,7 @@ public class AuthService {
 
     @Transactional
     public TokenResponse login(LoginRequest login) {
+
         // Validate login request
         validationService.validate(login);
 

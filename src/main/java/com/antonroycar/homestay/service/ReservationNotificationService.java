@@ -15,6 +15,7 @@ public class ReservationNotificationService {
 
     @KafkaListener(topics = "reservation-created", groupId = "reservation-notification-group")
     public void handleReservationCreated(ReservationResponse reservation) {
+
         // Construct email content from reservation details
         StringBuilder emailContent = new StringBuilder();
 

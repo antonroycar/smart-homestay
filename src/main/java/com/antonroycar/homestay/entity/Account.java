@@ -24,7 +24,7 @@ public class Account {
 
     private String password;
 
-    private String token;            // Store the JWT token
+    private String token;
 
-    private Long tokenExpiredAt;     // Store token expiration time
+    private Long tokenExpiredAt;
 }

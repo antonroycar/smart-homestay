@@ -37,8 +37,10 @@ public class ReservationController {
 
     @GetMapping("/all")
     public List<ReservationResponse> getAllReservations(HttpServletRequest request) {
+
         // Ambil token dari header Authorization
         String token = request.getHeader("Authorization");
+
         if (token == null || !token.startsWith("Bearer ")) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authorization token is required");
         }
@@ -47,6 +49,7 @@ public class ReservationController {
 
         // Ambil username dari token JWT
         String username = jwtUtil.extractUsername(actualToken);
+
         // Validasi token JWT
         if (!jwtUtil.validateToken(actualToken, username)) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid token");

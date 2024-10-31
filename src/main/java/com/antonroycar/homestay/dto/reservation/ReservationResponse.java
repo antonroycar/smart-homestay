@@ -21,11 +21,11 @@ public class ReservationResponse {
 
     private String accountId;
 
-    private List<RoomTypeDetails> roomTypeDetails;
-
-    private List<FacilityDetail> additionalFacilities;
-
     private GuestDetails guestDetails;
 
     private DateRange dateRange;
+
+    private List<RoomTypeDetails> roomTypeDetails;
+
+    private List<FacilityDetail> additionalFacilities;
 }

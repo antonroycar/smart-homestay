@@ -17,6 +17,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+
+import java.time.temporal.ChronoUnit;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
@@ -50,6 +52,7 @@ public class TransactionService {
         String actualToken = token.substring(7);  // Hapus "Bearer " dari awal token
 
         String username = jwtUtil.extractUsername(actualToken);
+
         // Validasi token JWT dan ambil username
         if (!jwtUtil.validateToken(actualToken, username)) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid token");
@@ -73,7 +76,7 @@ public class TransactionService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Transaction for this reservation already exists");
         }
 
-        // Validasi: Pastikan reservasi milik customer yang sedang login
+        // Pastikan reservasi milik customer yang sedang login
         if (!reservation.getAccountId().equals(account.getAccountId())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only make transactions for your own reservations");
         }
@@ -98,8 +101,17 @@ public class TransactionService {
                 .mapToDouble(facility -> facility.getPrice() * facility.getQuantity())
                 .sum();
 
-        // Calculate final total amount (roomCost + additionalFacilityCost)
-        double totalAmount = roomCost + additionalFacilityCost;
+        // Hitung durasi menginap dalam hari
+        long stayDuration = ChronoUnit.DAYS.between(
+                reservation.getDateRange().getCheckInDate().toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate(),
+                reservation.getDateRange().getCheckOutDate().toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDate());
+
+        if (stayDuration < 1) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Check-out date must be at least one day after check-in date.");
+        }
+
+        // Calculate final total amount (roomCost + additionalFacilityCost) * stayDuration
+        double totalAmount = (roomCost + additionalFacilityCost) * stayDuration;
 
         // Generate a unique payment code
         String paymentCode;

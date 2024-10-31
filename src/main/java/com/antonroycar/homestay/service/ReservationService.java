@@ -21,6 +21,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDate;
+import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -37,18 +39,20 @@ public class ReservationService {
     private AccountRepository accountRepository;
 
     @Autowired
-    private KafkaTemplate<String, ReservationResponse> kafkaTemplate;
+    private AuthService authService;
 
     @Autowired
     private JwtUtil jwtUtil;
 
+    @Autowired
+    private KafkaTemplate<String, ReservationResponse> kafkaTemplate;
+
     private static final String TOPIC = "reservation-created";
 
-    @Autowired
-    private AuthService authService;
 
     @Transactional
     public ReservationResponse reservation(ReservationRequest reservationRequest, HttpServletRequest request) {
+
         validationService.validate(reservationRequest);
 
         String token = request.getHeader("Authorization").substring(7);
@@ -57,7 +61,6 @@ public class ReservationService {
         String username = jwtUtil.extractUsername(token);
         Account account = accountRepository.findByUsername(username)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found or logged out"));
-
 
         // Validate the token and check if it matches the one in the account entity and is not expired
         if (account.getToken() == null || !account.getToken().equals(token) || account.getTokenExpiredAt() < System.currentTimeMillis()) {
@@ -70,7 +73,7 @@ public class ReservationService {
         // Hitung total jumlah bed yang dipesan
         int totalBeds = reservationRequest.getRoomTypes().stream().mapToInt(RoomTypeDetails.RoomTypeRequest::getQuantity).sum();
 
-        // Validasi: Jumlah bed tidak boleh lebih banyak dari jumlah guest
+        // Jumlah bed tidak boleh lebih banyak dari jumlah guest
         if (totalBeds > totalGuests) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Total beds cannot exceed total guests");
         }
@@ -91,6 +94,18 @@ public class ReservationService {
                 .children(reservationRequest.getChildren())
                 .quantity(totalGuests)
                 .build();
+
+        // Validasi tanggal check-in dan check-out
+        Date checkInDate = reservationRequest.getCheckInDate();
+        Date checkOutDate = reservationRequest.getCheckOutDate();
+
+        if (checkOutDate == null || checkInDate == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Check-in and check-out dates cannot be null.");
+        }
+
+        if (!checkOutDate.toInstant().isAfter(checkInDate.toInstant())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Check-out date must be at least one day after check-in date.");
+        }
 
         // Buat objek DateRange berdasarkan request
         DateRange dateRange = DateRange.builder()
